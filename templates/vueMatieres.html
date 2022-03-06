@@ -32,10 +32,10 @@
                             <td>{{ matiere.nom }}</td>
                             <td>{{ matiere.description }}</td>
                             <td>{{ matiere.heures }}</td>
-                            <form action="/modification-matiere/{{ matiere.id }}" Method="post">
+                            <form action="/modifierMatiere/{{ matiere.id }}" Method="post">
                                 <td><button class="btn btn-danger">Modifier</button></td>
                             </form>
-                            <form action="/suppression-matiere/{{ matiere.id }}/0" Method="post">
+                            <form action="/supprimerMatiere/{{ matiere.id }}" Method="post">
                                 <td><button class="btn btn-danger">Supprimer</button></td>
                             </form>
                         </tr>
