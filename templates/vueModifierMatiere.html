@@ -18,11 +18,11 @@
                     <form role="form" action="/modifierMatiere/{{ matiere.id }}" method="POST">
                         <div class="form-group">
                             <label for="matiereModifie">Saisissez les informations du cours</label>
-                            <input type="text" class="form-control" name="nom" id="nom" placeholder={{ matiere.nom }}/>
+                            <input required type="text" class="form-control" name="nom" id="nom" placeholder={{ matiere.nom }}/>
                             <br/>
-                            <input type="text" class="form-control" name="description" id="description" placeholder={{ matiere.description }}/>
+                            <input required type="text" class="form-control" name="description" id="description" placeholder={{ matiere.description }}/>
                             <br/>
-                            <input type="text" class="form-control" name="heures" id="heures" placeholder={{ matiere.heures }}/>
+                            <input required type="number" class="form-control" name="heures" id="heures" placeholder={{ matiere.heures }}/>
                         </div>
                         <button type="submit" class="btn btn-warning">Modifier dans RDS</button>
                     </form>
