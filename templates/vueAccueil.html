@@ -4,7 +4,7 @@
 		<meta charset="UTF-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Whatever</title>
+		<title>PartielAWS</title>
 		<link rel="stylesheet" href="{{ url_for( 'static' , filename = 'css/bootstrap.min.css' ) }}">
 		<link rel="stylesheet" href="{{ url_for( 'static' , filename = 'css/css.css' ) }}" >
 		<script type="text/javascript" src="{{ url_for( 'static' , filename = 'js/jquery-1.11.2.js' ) }}"></script>
@@ -16,11 +16,14 @@
         <br>
 		<div style="text-align: center; color: white">
             <h1 style="text-align: center;">Bienvenue!</h1>
-            <br>
-            <img style="max-width: 50%;" src="{{ url_for( 'static' , filename = 'media/home.jpg' ) }}">
+            <!--<br>
+            <img style="max-width: 50%;" src="{{ url_for( 'static' , filename = 'media/home.jpg' ) }}">-->
             <br>
             <a href="/ajoutMatiereMenu" class="btn btn-lg btn-warning">Entrer nouvelle matière</a>
             <a href="/voirMatieres" class="btn btn-lg btn-warning">Voir matières</a>
+            <a href="/envoyerRDStoS3" class="btn btn-lg btn-warning">Envoyer RDS à S3</a>
+            <a href="/telechargerCSV" class="btn btn-lg btn-warning">Télécharger CSV S3</a>
+            <a href="/envoyerS3toRDS" class="btn btn-lg btn-warning">Envoyer S3 à RDS</a>
 		</div>
 	</body>
 </html>

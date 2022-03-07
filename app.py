@@ -1,5 +1,7 @@
-from flask import Flask, render_template, request, url_for, redirect
+from flask import Flask, render_template, request, url_for, redirect, current_app, send_from_directory, Response
 import mysql.connector
+import boto3
+import os
 
 
 app = Flask(__name__)
@@ -15,7 +17,7 @@ def ajoutMatiereMenu():
     return render_template('vueAjoutMatiere.html')
 
 
-@app.route('/ajoutMatiereMenu/<idMatiere>', methods=['GET'])
+@app.route('/modifierMatiereMenu/<idMatiere>', methods=['POST'])
 def modifierMatiereMenu(idMatiere):
     storage = Storage()
     data = storage.loadMatiere(idMatiere)
@@ -28,10 +30,71 @@ def voirMatieres():
     matieres = []
     storage = Storage()
     data = storage.loadAll()
-    print(data)
     for row in data:
         matieres.append({'id': str(row[0]), 'nom': row[1], 'description': row[2], 'heures': str(row[3])})
     return render_template('vueMatieres.html', matieres=matieres)
+
+
+@app.route("/telechargerCSV")
+def telechargerCSV():
+    s3client = boto3.client("s3")
+    s3 = boto3.resource(
+        service_name="s3",
+        region_name="us-east-1",
+        aws_access_key_id="AKIAZMSAVZUGSJ7DUL5J",
+        aws_secret_access_key="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"
+    )
+    parielaws1 = s3.Bucket('parielaws1')
+    for obj in parielaws1.objects.all():
+        path, filename = os.path.split(obj.key)
+        parielaws1.download_file(obj.key, filename)
+    with open("matieres.csv") as f:
+        csv = f.read()
+    f.close()
+    os.remove("matieres.csv")
+    return Response(csv, mimetype="text/csv", headers={"Content-disposition": "attachment; filename=matieres.csv"})
+
+
+@app.route('/envoyerRDStoS3', methods=['GET'])
+def envoyerRDStoS3():
+    storage = Storage()
+    data = storage.loadAll()
+    newCSV = 'id,nom,description,heures\n'
+    for row in data:
+        newCSV += str(row[0]) + ',' + row[1] + ',' + row[2] + ',' + str(row[3]) + '\n'
+    f = open("matieres.csv", "w")
+    f.write(newCSV)
+    f.close()
+    s3Client = boto3.client("s3")
+    s3Client.upload_file(
+        Filename="matieres.csv",
+        Bucket="parielaws1",
+        Key="matieres.csv",
+    )
+    os.remove("matieres.csv")
+    return redirect('/')
+
+
+@app.route('/envoyerS3toRDS', methods=['GET'])
+def envoyerS3toRDS():
+    s3client = boto3.client("s3")
+    s3 = boto3.resource(
+        service_name="s3",
+        region_name="us-east-1",
+        aws_access_key_id="AKIAZMSAVZUGSJ7DUL5J",
+        aws_secret_access_key="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"
+    )
+    parielaws1 = s3.Bucket('parielaws1')
+    for obj in parielaws1.objects.all():
+        path, filename = os.path.split(obj.key)
+        parielaws1.download_file(obj.key, filename)
+    with open("matieres.csv") as f:
+        csv = f.read()
+    f.close()
+    storage = Storage()
+    storage.replaceFromCSV(csv)
+    os.remove("matieres.csv")
+    return redirect('/')
 
 
 @app.route('/ajoutMatiere', methods=['POST'])
@@ -40,18 +103,19 @@ def ajoutMatiere():
     matiere = {'nom': data['nom'], 'description': data['description'], 'heures': int(data['heures'])}
     storage = Storage()
     storage.addMatiere(matiere)
-    return render_template('vueAccueil.html')
+    return redirect(url_for('voirMatieres'))
 
-@app.route('/modifierMatiere', methods=['POST'])
-def modifierMatiere():
+
+@app.route('/modifierMatiere/<idMatiere>', methods=['POST'])
+def modifierMatiere(idMatiere):
     data = request.form
-    matiere = {'nom': data['nom'], 'description': data['description'], 'heures': int(data['heures'])}
+    matiere = {'id': idMatiere, 'nom': data['nom'], 'description': data['description'], 'heures': int(data['heures'])}
     storage = Storage()
     storage.updateMatiere(matiere)
-    return render_template('vueAccueil.html')
+    return redirect(url_for('voirMatieres'))
 
 
-@app.route('/supprimerMatiere/<idMatiere>', methods=['GET'])
+@app.route('/supprimerMatiere/<idMatiere>', methods=['POST'])
 def supprimerMatiere(idMatiere):
     storage = Storage()
     storage.deleteMatiere(idMatiere)
@@ -76,7 +140,7 @@ class Storage:
 
     def loadMatiere(self, idMatiere):
         cur = self.db.cursor()
-        cur.execute(''' SELECT id, nom, description, heures FROM Matieres WHERE id = %s ''', idMatiere)
+        cur.execute(''' SELECT id, nom, description, heures FROM Matieres WHERE id = %s ''', (idMatiere, ))
         matiere = cur.fetchall()
         return matiere
 
@@ -88,14 +152,25 @@ class Storage:
 
     def deleteMatiere(self, idMatiere):
         cur = self.db.cursor()
-        cur.execute(''' DELETE FROM Matieres WHERE id = %s) '''
-                    , idMatiere)
+        cur.execute(''' DELETE FROM Matieres WHERE id = %s ''', (idMatiere, ))
         self.db.commit()
 
     def updateMatiere(self, matiere):
         cur = self.db.cursor()
-        cur.execute(''' UPDATE Matieres SET nom = %s, description = %s, heures = %s WHERE id = %s) '''
-                    , (matiere['nom'], matiere['description'], matiere['heures']))
+        cur.execute(''' UPDATE Matieres SET nom = %s, description = %s, heures = %s WHERE id = %s '''
+                    , (matiere['nom'], matiere['description'], matiere['heures'], matiere['id']))
+        self.db.commit()
+
+    def replaceFromCSV(self, csv):
+        cur = self.db.cursor()
+        cur.execute('''DELETE FROM Matieres''')
+        matieres = csv.split('\n')
+        matieres.pop(0)
+        matieres.pop()
+        for matiere in matieres:
+            data = matiere.split(',')
+            cur.execute(''' INSERT INTO Matieres(id, nom, description, heures) VALUES (%s, %s, %s, %s) '''
+                        , (data[0], data[1], data[2], data[3]))
         self.db.commit()
 
 
